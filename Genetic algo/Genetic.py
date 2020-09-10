@@ -1,17 +1,19 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Sep  8 13:57:17 2020
+Created on Thu Sep 10 19:27:00 2020
 
 @author: subham
 """
+
 #importing the libraries
 import pandas as pd
-import numpy as np
+import numpy  as np
 import warnings
 from sklearn.model_selection       import train_test_split
 from sklearn.ensemble              import RandomForestClassifier
-from sklearn.model_selection       import RandomizedSearchCV
 from sklearn.metrics               import accuracy_score,classification_report,confusion_matrix
+from tpot                          import TPOTClassifier
+
 warnings.filterwarnings('ignore')
 
 #loading the dataset
@@ -37,20 +39,10 @@ print(confusion_matrix(Y_test,pred))
 print(accuracy_score(Y_test,pred))
 print(classification_report(Y_test,pred))
 
-# The main parameters used by a Random Forest Classifier are:
-# 
-# - criterion = the function used to evaluate the quality of a split.
-# - max_depth = maximum number of levels allowed in each tree.
-# - max_features = maximum number of features considered when splitting a node.
-# - min_samples_leaf = minimum number of samples which can be stored in a tree leaf.
-# - min_samples_split = minimum number of samples necessary in a node to cause node splitting.
-# - n_estimators = number of trees in the ensamble.
-
-
-#random search
+#applying randomized search
 
 # Number of trees in random forest
-n_estimators = [int(x) for x in np.linspace(start =100, stop = 500, num = 10)]
+n_estimators = [int(x) for x in np.linspace(start = 200, stop = 2000, num = 10)]
 # Number of features to consider at every split
 max_features = ['auto', 'sqrt','log2']
 # Maximum number of levels in tree
@@ -60,28 +52,18 @@ min_samples_split = [2, 5, 10,14]
 # Minimum number of samples required at each leaf node
 min_samples_leaf = [1, 2, 4,6,8]
 # Create the random grid
-random_grid = {'n_estimators': n_estimators,
+param = {'n_estimators': n_estimators,
                'max_features': max_features,
                'max_depth': max_depth,
                'min_samples_split': min_samples_split,
-               'min_samples_leaf': min_samples_leaf}
-print(random_grid)
+               'min_samples_leaf': min_samples_leaf,
+              'criterion':['entropy','gini']}
 
-rf_1=RandomForestClassifier()
-randomcv=RandomizedSearchCV(estimator=rf_1,param_distributions=random_grid,n_iter=100,cv=3,verbose=2,
-                               random_state=100,n_jobs=-1)
-### fit the randomized model
-randomcv.fit(X_train,Y_train)
-
-#getting the best parameters
-best_grid=randomcv.best_estimator_
-
-#fitting into the data and predicting
-best_grid.fit(X_train,Y_train)
-pred_2=best_grid.predict(X_test)
-
-#validation
-print(confusion_matrix(Y_test,pred_2))
-print(accuracy_score(Y_test,pred_2))
-print(classification_report(Y_test,pred_2))
-
+#applying the genetic
+tpot_classifier = TPOTClassifier(generations= 5, population_size= 24, offspring_size= 12,
+                                 verbosity= 2, early_stop= 12,
+                                 config_dict={'sklearn.ensemble.RandomForestClassifier': param}, 
+                                 cv = 4, scoring = 'accuracy')
+tpot_classifier.fit(X_train,Y_train)
+accuracy = tpot_classifier.score(X_test, Y_test)
+print(accuracy)
